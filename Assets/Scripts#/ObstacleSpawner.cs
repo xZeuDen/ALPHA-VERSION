@@ -1,49 +1,92 @@
 using System.Collections;
+using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+
 
 public class ObstacleSpawner : MonoBehaviour
 {
-    public GameObject[] obstaclePrefabs;  // Array to hold multiple obstacle prefabs
-    public float spawnDistanceMin = 10f;   // Minimum distance in front of the player
-    public float spawnDistanceMax = 30f;   // Maximum distance in front of the player
-    public float minSpawnTime = 2f;        // Minimum time between spawns
-    public float maxSpawnTime = 3.5f;      // Maximum time between spawns
-    public Transform player;               // Reference to the player’s transform
+    public GameObject[] obstaclePrefabs; 
+    private PlayerController playerControllerScript;
+    public TextMeshProUGUI meterText; // UI for displaying meters
+     public TextMeshProUGUI gameOVerText;
+    private int meters; // Track player progress in meters
+    public float spawnDistance = 50f;
+    public float spawnInterval = 0.7f;
+    public Transform player; 
+    public bool gameOver;
+  
+    
 
-    private void Start()
+    // Define fixed X positions for each lane
+    private float[] lanePositions = new float[] {-17, -12.96f, -7.94f, -3.81f }; //these values represent the X positions of lanes
+    private float spawnHeight = 0.5f; //The height to spawn obstacles above the road
+
+    // Start is called before the first frame update
+    void Start()
     {
-        
-        StartCoroutine(SpawnObstacles());
+        // Start spawning obstacles
+        InvokeRepeating("SpawnObstacle", 1f, spawnInterval);
+
+        // Reference the player controller to check game over state
+        playerControllerScript = GameObject.Find("Player").GetComponent<PlayerController>();
+
+        // Initialize score and meters
+        UpdateMeters(0);
+
+        // Start meter increment coroutine
+        StartCoroutine(IncrementMeters());
     }
-
-    IEnumerator SpawnObstacles()
-    {
-        while (true)
+ 
+        public void SpawnObstacle()
         {
-            
-            for (int i = 0; i < 1; i++)
+            if (playerControllerScript.gameOver == false)
             {
-                // Wait for a random amount of time before spawning the next obstacle
-                float spawnTime = Random.Range(minSpawnTime, maxSpawnTime);
-                yield return new WaitForSeconds(spawnTime);
+                // Randomly choose a lane for the obstacle to spawn in
+                int laneIndex = Random.Range(0, lanePositions.Length);
+                float laneXPosition = lanePositions[laneIndex];
 
-                // Calculate a random distance in front of the player
-                float spawnDistance = Random.Range(spawnDistanceMin, spawnDistanceMax);
+                // Set spawn position on the chosen lane
+                Vector3 spawnPosition = new Vector3(laneXPosition, spawnHeight, player.position.z + spawnDistance);
 
-                // Get the spawn position in front of the player
-                Vector3 spawnPosition = player.position + player.forward * spawnDistance;
-                spawnPosition.x += Random.Range(-2.45f, -8.44f);
-                spawnPosition.y = 1f;
-
-                // Randomly select an obstacle prefab from the array
+                // Randomly choose an obstacle from the array
                 int randomIndex = Random.Range(0, obstaclePrefabs.Length);
                 GameObject selectedObstacle = obstaclePrefabs[randomIndex];
 
-                // Instantiate the selected obstacle at the spawn position
-                Instantiate(selectedObstacle, spawnPosition, Quaternion.identity);
-
+                // Instantiate the obstacle at the chosen lane position
+                Instantiate(selectedObstacle, spawnPosition, selectedObstacle.transform.rotation);
             }
+        }
+
+
+
+ 
+    // Update meter UI
+    public void UpdateMeters(int metersToAdd)
+    {
+        meters += metersToAdd;
+        meterText.text = "Meters: " + meters;
+    }
+
+    // Coroutine to increment meters every 0.5 seconds
+    IEnumerator IncrementMeters()
+    {
+        while (!playerControllerScript.gameOver)
+        {
+            yield return new WaitForSeconds(0.1f);
+            UpdateMeters(1);
         }
     }
 
+    public void RestartGame()
+    {
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
+
+     public void StartGame()
+    {
+        gameOver = false;
+    }
+}
